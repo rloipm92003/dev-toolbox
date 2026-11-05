@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dev Toolbox · 开发者工具箱</title>
+<meta name="description" content="一个零依赖、纯前端的开发者工具箱：JSON 格式化、Base64、URL 编解码、时间戳、哈希、UUID、正则测试、颜色转换。">
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#ffffff; --text:#1a1d24; --muted:#6b7280;
+    --line:#e5e7eb; --accent:#3b6fe0; --accent-soft:#eef3fe;
+    --ok:#0f9d58; --err:#d93025; --radius:10px;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1115; --panel:#171a21; --text:#e8eaed; --muted:#9aa0a6;
+      --line:#2a2f3a; --accent:#6b95ff; --accent-soft:#1d2536;
+      --ok:#4ade80; --err:#f87171;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    padding:28px 20px 18px; max-width:960px; margin:0 auto;
+  }
+  h1{font-size:22px; margin:0 0 4px; letter-spacing:-.3px}
+  header p{margin:0; color:var(--muted); font-size:13px}
+  .wrap{max-width:960px; margin:0 auto; padding:0 20px 60px}
+  .tabs{
+    display:flex; gap:6px; flex-wrap:wrap; margin:18px 0 16px;
+  }
+  .tab{
+    padding:7px 13px; border-radius:999px; border:1px solid var(--line);
+    background:var(--panel); color:var(--muted); cursor:pointer;
+    font-size:13px; transition:.15s;
+  }
+  .tab:hover{border-color:var(--accent); color:var(--accent)}
+  .tab.active{background:var(--accent); border-color:var(--accent); color:#fff}
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px;
+  }
+  .panel[hidden]{display:none}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .col{flex:1 1 300px; min-width:0; display:flex; flex-direction:column}
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600; letter-spacing:.2px}
+  textarea,input[type=text],input[type=number],select{
+    width:100%; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+    font-family:var(--mono); font-size:13px; resize:vertical; outline:none;
+  }
+  textarea:focus,input:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+  textarea{min-height:180px; line-height:1.55}
+  .btns{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  button{
+    padding:8px 14px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel); color:var(--text); cursor:pointer; font-size:13px;
+    transition:.15s; font-family:inherit;
+  }
+  button:hover{border-color:var(--accent); color:var(--accent)}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover{opacity:.9; color:#fff}
+  .out{
+    margin-top:10px; min-height:40px; padding:10px 12px; border-radius:8px;
+    background:var(--bg); border:1px solid var(--line);
+    font-family:var(--mono); font-size:13px; white-space:pre-wrap; word-break:break-all;
+  }
+  .hint{font-size:12px; color:var(--muted); margin-top:8px}
+  .ok{color:var(--ok)} .err{color:var(--err)}
+  .hidden{display:none}
+  .field{margin-bottom:14px}
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px}
+  footer{text-align:center; color:var(--muted); font-size:12px; padding:30px 20px 0}
+  footer a{color:var(--muted)}
+  kbd{font-family:var(--mono); background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:11px}
+  .swatch{width:100%; height:56px; border-radius:8px; border:1px solid var(--line); margin-top:8px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dev Toolbox · 开发者工具箱</h1>
+  <p>零依赖 · 纯前端 · 数据不出浏览器</p>
+</header>
+
+<div class="wrap">
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="json">JSON</button>
+    <button class="tab" data-tab="base64">Base64</button>
+    <button class="tab" data-tab="url">URL</button>
+    <button class="tab" data-tab="time">时间戳</button>
+    <button class="tab" data-tab="uuid">UUID</button>
+    <button class="tab" data-tab="hash">哈希</button>
+    <button class="tab" data-tab="regex">正则</button>
+    <button class="tab" data-tab="color">颜色</button>
+  </nav>
+
+  <!-- JSON -->
+  <section class="panel" id="panel-json">
+    <div class="row">
+      <div class="col">
+        <label>输入 JSON</label>
+        <textarea id="json-in" placeholder='{"name":"dev-toolbox","stars":0}'></textarea>
+      </div>
+      <div class="col">
+        <label>结果</label>
+        <div class="out" id="json-out">等待输入…</div>
+        <p class="hint" id="json-hint"></p>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="primary" onclick="jsonFormat(2)">格式化 (2 空格)</button>
+      <button onclick="jsonFormat(4)">格式化 (4 空格)</button>
+      <button onclick="jsonFormat(0)">压缩成一行</button>
+      <button onclick="jsonEscape()">转义字符串</button>
+      <button onclick="copyEl('json-out')">复制结果</button>
+    </div>
+  </section>
+
+  <!-- Base64 -->
+  <section class="panel" id="panel-base64" hidden>
+    <div class="field">
+      <label>文本 / Base64</label>
+      <textarea id="b64-in" placeholder="输入要编码的文本，或要解码的 Base64…"></textarea>
+    </div>
+    <div class="btns">
+      <button class="primary" onclick="b64('encode')">编码 → Base64</button>
+      <button onclick="b64('decode')">Base64 → 解码</button>
+    </div>
+    <div class="out" id="b64-out">等待输入…</div>
+    <p class="hint">使用 UTF-8 安全的编码方式，中文不会乱码。</p>
+  </section>
+
+  <!-- URL -->
+  <section class="panel" id="panel-url" hidden>
+    <div class="field">
+      <label>URL / 文本</label>
+      <textarea id="url-in" placeholder="https://example.com/搜索?q=你好"></textarea>
+    </div>
+    <div class="btns">
+      <button class="primary" onclick="urlOp('encodeURIComponent')">全部编码</button>
+      <button onclick="urlOp('encodeURI')">仅编码 URL</button>
+      <button onclick="urlOp('decode')">解码</button>
+    </div>
+    <div class="out" id="url-out">等待输入…</div>
+  </section>
+
+  <!-- 时间戳 -->
+  <section class="panel" id="panel-time" hidden>
+    <div class="grid2">
+      <div>
+        <label>当前时间戳</label>
+        <div class="out" id="now-ts">—</div>
+      </div>
+      <div>
+        <label>当前时间（本地）</label>
+        <div class="out" id="now-local">—</div>
+      </div>
+    </div>
+    <div class="btns"><button onclick="tick()">刷新</button></div>
+    <div class="field" style="margin-top:16px">
+      <label>时间戳 / 日期字符串 互转</label>
+      <input type="text" id="time-in" placeholder="1700000000  或  2026-11-05 22:54:00">
+    </div>
+    <div class="btns">
+      <button class="primary" onclick="timeConv()">转换</button>
+      <button onclick="document.getElementById('time-in').value=Math.floor(Date.now()/1000);timeConv()">填入当前秒</button>
+    </div>
+    <div class="out" id="time-out">等待输入…</div>
+  </section>
+
+  <!-- UUID -->
+  <section class="panel" id="panel-uuid" hidden>
+    <div class="field">
+      <label>生成数量</label>
+      <input type="number" id="uuid-count" value="5" min="1" max="100">
+    </div>
+    <div class="btns">
+      <button class="primary" onclick="genUUID()">生成 UUID v4</button>
+      <button onclick="copyEl('uuid-out')">复制全部</button>
+    </div>
+    <div class="out" id="uuid-out">等待生成…</div>
+  </section>
+
+  <!-- 哈希 -->
+  <section class="panel" id="panel-hash" hidden>
+    <div class="field">
+      <label>输入文本</label>
+      <textarea id="hash-in" placeholder="要计算哈希的文本…"></textarea>
+    </div>
+    <div class="btns">
+      <button class="primary" onclick="doHash()">计算 SHA-1 / SHA-256 / SHA-512</button>
+    </div>
+    <div class="out" id="hash-out">等待输入…</div>
+  </section>
+
+  <!-- 正则 -->
+  <section class="panel" id="panel-regex" hidden>
+    <div class="grid2">
+      <div class="field" style="grid-column:1/-1">
+        <label>正则表达式（不带斜杠）</label>
+        <input type="text" id="re-pattern" value="\\d+" placeholder="\\d+">
+      </div>
+      <div class="field">
+        <label>Flags</label>
+        <input type="text" id="re-flags" value="g" placeholder="gim">
+      </div>
+    </div>
+    <div class="field">
+      <label>测试文本</label>
+      <textarea id="re-text" placeholder="输入要匹配的文本…">订单 A1001 金额 250 元，订单 B2048 金额 30 元</textarea>
+    </div>
+    <div class="btns"><button class="primary" onclick="testRegex()">测试匹配</button></div>
+    <div class="out" id="re-out">等待输入…</div>
+  </section>
+
+  <!-- 颜色 -->
+  <section class="panel" id="panel-color" hidden>
+    <div class="field">
+      <label>颜色值（HEX / RGB / HSL 任选其一输入）</label>
+      <input type="text" id="color-in" value="#3b6fe0" placeholder="#3b6fe0  或  rgb(59,111,224)">
+    </div>
+    <div class="btns"><button class="primary" onclick="convColor()">转换</button></div>
+    <div class="out" id="color-out">等待输入…</div>
+    <div class="swatch" id="color-swatch" style="background:#3b6fe0"></div>
+  </section>
+
+  <footer>
+    MIT License · 欢迎提交 PR 和 Issue · 觉得有用就点个 ⭐
+  </footer>
+</div>
+
+<script>
+/* ---------- Tab 切换 ---------- */
+document.getElementById('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab');
+  if (!btn) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === btn));
+  document.querySelectorAll('.panel').forEach(p => {
+    p.hidden = p.id !== 'panel-' + btn.dataset.tab;
+  });
+});
+
+/* ---------- 复制 ---------- */
+function copyText(text, el) {
+  const done = () => { if (el) { const o = el.textContent; el.textContent = '✓ 已复制到剪贴板'; setTimeout(() => el.textContent = o, 1200); } };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallback());
+  } else fallback();
+  function fallback() {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { alert('复制失败，请手动选中'); }
+    document.body.removeChild(ta);
+  }
+}
+function copyEl(id) { copyText(document.getElementById(id).textContent, document.getElementById(id)); }
+
+/* ---------- JSON ---------- */
+function jsonFormat(space) {
+  const out = document.getElementById('json-out'), hint = document.getElementById('json-hint');
+  const raw = document.getElementById('json-in').value.trim();
+  if (!raw) { out.textContent = '等待输入…'; hint.textContent = ''; return; }
+  try {
+    const obj = JSON.parse(raw);
+    out.className = 'out ok';
+    out.textContent = space === 0 ? JSON.stringify(obj) : JSON.stringify(obj, null, space);
+    const size = new Blob([out.textContent]).size;
+    hint.textContent = '✓ 合法 JSON · ' + size + ' 字节';
+  } catch (e) {
+    out.className = 'out err';
+    out.textContent = '✗ JSON 解析失败：' + e.message;
+    hint.textContent = '';
+  }
+}
+function jsonEscape() {
+  const raw = document.getElementById('json-in').value;
+  document.getElementById('json-out').className = 'out';
+  document.getElementById('json-out').textContent = JSON.stringify(raw);
+}
+
+/* ---------- Base64 ---------- */
+function b64(op) {
+  const out = document.getElementById('b64-out');
+  const s = document.getElementById('b64-in').value;
+  try {
+    out.className = 'out ok';
+    if (op === 'encode') {
+      out.textContent = btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+    } else {
+      const bin = atob(s.trim().replace(/\s/g, ''));
+      out.textContent = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+    }
+  } catch (e) {
+    out.className = 'out err';
+    out.textContent = '✗ 处理失败：' + e.message + '（解码时请确认输入是合法且 UTF-8 的 Base64）';
+  }
+}
+
+/* ---------- URL ---------- */
+function urlOp(op) {
+  const out = document.getElementById('url-out');
+  const s = document.getElementById('url-in').value;
+  try {
+    out.className = 'out ok';
+    out.textContent = op === 'decode' ? decodeURIComponent(s) : window[op](s);
+  } catch (e) {
+    out.className = 'out err';
+    out.textContent = '✗ ' + e.message;
+  }
+}
+
+/* ---------- 时间戳 ---------- */
+function pad(n) { return String(n).padStart(2, '0'); }
+function fmt(d) {
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
+         pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+function tick() {
+  const d = new Date();
+  document.getElementById('now-ts').textContent = Math.floor(d.getTime() / 1000) + '  (秒)   ' + d.getTime() + '  (毫秒)';
+  document.getElementById('now-local').textContent = fmt(d) + '  ·  UTC ' + d.toISOString();
+}
+function timeConv() {
+  const out = document.getElementById('time-out');
+  const v = document.getElementById('time-in').value.trim();
+  if (!v) { out.textContent = '等待输入…'; return; }
+  let d;
+  if (/^\d{10}$/.test(v)) d = new Date(Number(v) * 1000);
+  else if (/^\d{13}$/.test(v)) d = new Date(Number(v));
+  else d = new Date(v.replace(/-/g, '/'));
+  if (isNaN(d)) { out.className = 'out err'; out.textContent = '✗ 无法识别的格式'; return; }
+  out.className = 'out ok';
+  out.textContent =
+    '本地时间：' + fmt(d) + '\n' +
+    'UTC (ISO)：' + d.toISOString() + '\n' +
+    '秒级时间戳：' + Math.floor(d.getTime() / 1000) + '\n' +
+    '毫秒时间戳：' + d.getTime() + '\n' +
+    '星期：' + '日一二三四五六'[d.getDay()] + '  距今：' + rel(d);
+}
+function rel(d) {
+  const diff = Date.now() - d.getTime(), a = Math.abs(diff);
+  const units = [[31536e6,'年'],[2592e6,'月'],[864e5,'天'],[36e5,'小时'],[6e4,'分钟'],[1e3,'秒']];
+  for (const [ms, name] of units) {
+    if (a >= ms) return Math.floor(a / ms) + name + (diff > 0 ? '前' : '后');
+  }
+  return '刚刚';
+}
+setInterval(tick, 1000); tick();
+
+/* ---------- UUID ---------- */
+function genUUID() {
+  const n = Math.min(100, Math.max(1, Number(document.getElementById('uuid-count').value) || 1));
+  const list = [];
+  for (let i = 0; i < n; i++) {
+    list.push(crypto.randomUUID ? crypto.randomUUID() : uuidFallback());
+  }
+  document.getElementById('uuid-out').className = 'out ok';
+  document.getElementById('uuid-out').textContent = list.join('\n');
+}
+function uuidFallback() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+/* ---------- 哈希 ---------- */
+async function doHash() {
+  const out = document.getElementById('hash-out');
+  const text = document.getElementById('hash-in').value;
+  if (!text) { out.textContent = '等待输入…'; return; }
+  try {
+    const buf = new TextEncoder().encode(text);
+    const algs = ['SHA-1', 'SHA-256', 'SHA-512'];
+    const parts = [];
+    for (const alg of algs) {
+      const h = await crypto.subtle.digest(alg, buf);
+      parts.push(alg + ':\n' + [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''));
+    }
+    out.className = 'out ok';
+    out.textContent = parts.join('\n\n');
+  } catch (e) {
+    out.className = 'out err';
+    out.textContent = '✗ 计算失败：' + e.message + '（需要通过 https 或 localhost 打开）';
+  }
+}
+
+/* ---------- 正则 ---------- */
+function testRegex() {
+  const out = document.getElementById('re-out');
+  const p = document.getElementById('re-pattern').value;
+  const f = document.getElementById('re-flags').value;
+  const text = document.getElementById('re-text').value;
+  let re;
+  try { re = new RegExp(p, f); }
+  catch (e) { out.className = 'out err'; out.textContent = '✗ 正则语法错误：' + e.message; return; }
+
+  const all = [...text.matchAll(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'))];
+  if (!all.length) { out.className = 'out err'; out.textContent = '未匹配到内容'; return; }
+  const lines = all.map((m, i) =>
+    '[' + (i + 1) + '] "' + m[0] + '"  @' + m.index +
+    (m.length > 1 ? '  分组: ' + m.slice(1).map(g => g === undefined ? 'undefined' : '"' + g + '"').join(', ') : '')
+  );
+  out.className = 'out ok';
+  out.textContent = '共 ' + all.length + ' 处匹配\n\n' + lines.join('\n');
+}
+
+/* ---------- 颜色 ---------- */
+function convColor() {
+  const raw = document.getElementById('color-in').value.trim();
+  const out = document.getElementById('color-out');
+  const sw = document.getElementById('color-swatch');
+  let r, g, b;
+  const hex = raw.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  const rgb = raw.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  const hsl = raw.match(/^hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/i);
+  if (hex) {
+    let h = hex[1];
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+  } else if (rgb) {
+    [r, g, b] = [+rgb[1], +rgb[2], +rgb[3]];
+  } else if (hsl) {
+    [r, g, b] = hslToRgb(+hsl[1], +hsl[2] / 100, +hsl[3] / 100);
+  } else {
+    out.className = 'out err'; out.textContent = '✗ 无法识别的颜色格式'; return;
+  }
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const hexStr = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  out.className = 'out ok';
+  out.textContent =
+    'HEX : ' + hexStr + '\n' +
+    'RGB : rgb(' + r + ', ' + g + ', ' + b + ')\n' +
+    'HSL : hsl(' + Math.round(h) + ', ' + Math.round(s) + '%, ' + Math.round(l) + '%)\n' +
+    '亮度: ' + luminance(r, g, b).toFixed(3) + '  → 建议文字色 ' + (luminance(r, g, b) > 0.5 ? '#000000' : '#ffffff');
+  sw.style.background = hexStr;
+}
+function hslToRgb(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) [r,g,b]=[c,x,0]; else if (h < 120) [r,g,b]=[x,c,0];
+  else if (h < 180) [r,g,b]=[0,c,x]; else if (h < 240) [r,g,b]=[0,x,c];
+  else if (h < 300) [r,g,b]=[x,0,c]; else [r,g,b]=[c,0,x];
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+  const l = (max + min) / 2;
+  let h = 0, s = 0;
+  if (d) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  return [h, s * 100, l * 100];
+}
+function luminance(r, g, b) {
+  const a = [r, g, b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+}
+
+/* 初始化示例 */
+document.getElementById('json-in').value = '{"name":"dev-toolbox","version":"1.0.0","features":["json","base64","url","time","uuid","hash","regex","color"],"stars":0}';
+jsonFormat(2);
+genUUID();
+convColor();
+</script>
+</body>
+</html>
